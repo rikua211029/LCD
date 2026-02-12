@@ -126,7 +126,7 @@ function loadLogs(){
     div.innerHTML = `
       <strong>${log.line}</strong> (${log.number})<br>
       エンド ${log.place}<br>
-      メモ ${log.memo}
+      メモ ${log.memo}<br>
       日付 ${log.date}<br>
       ${log.photo ? `<img src="${log.photo}">` : ""}
       <button class="delete" onclick="deleteLog(${index})">削除</button>
