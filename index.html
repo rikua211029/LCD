@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>東方風ミニ弾幕</title>
+<style>
+body{
+  margin:0;
+  overflow:hidden;
+  background:black;
+  color:white;
+  font-family:sans-serif;
+}
+#ui{
+  position:fixed;
+  top:10px;
+  left:10px;
+}
+canvas{ display:block; }
+</style>
+</head>
+<body>
+
+<div id="ui">
+Score: <span id="score">0</span><br>
+残機: <span id="life">3</span>
+</div>
+
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let player = {
+  x: canvas.width/2,
+  y: canvas.height-100,
+  size: 4,        // 当たり判定
+  drawSize: 10,   // 見た目
+  speed: 4,
+  slowSpeed: 2
+};
+
+let bullets = [];
+let keys = {};
+let score = 0;
+let life = 3;
+
+document.addEventListener("keydown", e=>keys[e.key]=true);
+document.addEventListener("keyup", e=>keys[e.key]=false);
+
+function spawnCircle(){
+  let cx = canvas.width/2;
+  let cy = 150;
+  let count = 24;
+
+  for(let i=0;i<count;i++){
+    let angle = (Math.PI*2/count)*i;
+    bullets.push({
+      x: cx,
+      y: cy,
+      dx: Math.cos(angle)*2,
+      dy: Math.sin(angle)*2,
+      size: 6
+    });
+  }
+}
+
+function update(){
+  let moveSpeed = keys["Shift"] ? player.slowSpeed : player.speed;
+
+  if(keys["ArrowUp"]) player.y -= moveSpeed;
+  if(keys["ArrowDown"]) player.y += moveSpeed;
+  if(keys["ArrowLeft"]) player.x -= moveSpeed;
+  if(keys["ArrowRight"]) player.x += moveSpeed;
+
+  player.x = Math.max(0, Math.min(canvas.width, player.x));
+  player.y = Math.max(0, Math.min(canvas.height, player.y));
+
+  bullets.forEach(b=>{
+    b.x += b.dx;
+    b.y += b.dy;
+
+    let dist = Math.hypot(player.x-b.x, player.y-b.y);
+
+    // 被弾
+    if(dist < player.size + b.size){
+      life--;
+      bullets=[];
+      if(life<=0){
+        alert("ゲームオーバー\nScore: "+score);
+        location.reload();
+      }
+    }
+
+    // グレイズ
+    if(dist < 20 && dist > player.size + b.size){
+      score += 1;
+    }
+  });
+
+  document.getElementById("score").textContent=score;
+  document.getElementById("life").textContent=life;
+}
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // 自機
+  ctx.fillStyle="white";
+  ctx.beginPath();
+  ctx.arc(player.x,player.y,player.drawSize,0,Math.PI*2);
+  ctx.fill();
+
+  // 当たり判定表示（低速時）
+  if(keys["Shift"]){
+    ctx.fillStyle="red";
+    ctx.beginPath();
+    ctx.arc(player.x,player.y,player.size,0,Math.PI*2);
+    ctx.fill();
+  }
+
+  // 弾
+  ctx.fillStyle="pink";
+  bullets.forEach(b=>{
+    ctx.beginPath();
+    ctx.arc(b.x,b.y,b.size,0,Math.PI*2);
+    ctx.fill();
+  });
+}
+
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+setInterval(spawnCircle,1500);
+loop();
+</script>
+
+</body>
+</html>
