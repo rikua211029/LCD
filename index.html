@@ -2,143 +2,156 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>東方風ミニ弾幕</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>撮影記録アプリ</title>
+
 <style>
 body{
   margin:0;
-  overflow:hidden;
-  background:black;
-  color:white;
   font-family:sans-serif;
+  background:#f2f2f7;
 }
-#ui{
-  position:fixed;
-  top:10px;
-  left:10px;
+header{
+  background:#222;
+  color:white;
+  text-align:center;
+  padding:15px;
+  font-size:20px;
 }
-canvas{ display:block; }
+.container{
+  padding:15px;
+}
+input, textarea{
+  width:100%;
+  padding:10px;
+  margin:8px 0;
+  border-radius:10px;
+  border:1px solid #ccc;
+  font-size:16px;
+}
+button{
+  width:100%;
+  padding:12px;
+  border:none;
+  border-radius:20px;
+  background:#007aff;
+  color:white;
+  font-size:16px;
+  margin-top:10px;
+}
+.card{
+  background:white;
+  padding:15px;
+  margin:10px 0;
+  border-radius:15px;
+  box-shadow:0 2px 5px rgba(0,0,0,0.1);
+}
+.card img{
+  width:100%;
+  border-radius:10px;
+  margin-top:10px;
+}
+.delete{
+  background:red;
+  margin-top:10px;
+}
 </style>
 </head>
 <body>
 
-<div id="ui">
-Score: <span id="score">0</span><br>
-残機: <span id="life">3</span>
+<header>🚆 撮影記録アプリ</header>
+
+<div class="container">
+
+<input id="line" placeholder="路線名">
+<input id="number" placeholder="編成番号">
+<input id="place" placeholder="撮影地">
+<input type="date" id="date">
+<textarea id="memo" placeholder="メモ"></textarea>
+<input type="file" id="photo" accept="image/*">
+
+<button onclick="addLog()">記録する</button>
+
+<hr>
+
+<input id="search" placeholder="検索（路線・番号など）" oninput="loadLogs()">
+
+<div id="logList"></div>
+
 </div>
 
-<canvas id="game"></canvas>
-
 <script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+function addLog(){
+  const reader = new FileReader();
+  const file = document.getElementById("photo").files[0];
 
-let player = {
-  x: canvas.width/2,
-  y: canvas.height-100,
-  size: 4,        // 当たり判定
-  drawSize: 10,   // 見た目
-  speed: 4,
-  slowSpeed: 2
-};
+  reader.onload = function(){
+    const log = {
+      line: line.value,
+      number: number.value,
+      place: place.value,
+      date: date.value,
+      memo: memo.value,
+      photo: reader.result || ""
+    };
 
-let bullets = [];
-let keys = {};
-let score = 0;
-let life = 3;
+    let logs = JSON.parse(localStorage.getItem("trainLogs") || "[]");
+    logs.unshift(log);
+    localStorage.setItem("trainLogs", JSON.stringify(logs));
 
-document.addEventListener("keydown", e=>keys[e.key]=true);
-document.addEventListener("keyup", e=>keys[e.key]=false);
+    clearForm();
+    loadLogs();
+  };
 
-function spawnCircle(){
-  let cx = canvas.width/2;
-  let cy = 150;
-  let count = 24;
-
-  for(let i=0;i<count;i++){
-    let angle = (Math.PI*2/count)*i;
-    bullets.push({
-      x: cx,
-      y: cy,
-      dx: Math.cos(angle)*2,
-      dy: Math.sin(angle)*2,
-      size: 6
-    });
+  if(file){
+    reader.readAsDataURL(file);
+  } else {
+    reader.onload();
   }
 }
 
-function update(){
-  let moveSpeed = keys["Shift"] ? player.slowSpeed : player.speed;
+function loadLogs(){
+  const list = document.getElementById("logList");
+  list.innerHTML = "";
 
-  if(keys["ArrowUp"]) player.y -= moveSpeed;
-  if(keys["ArrowDown"]) player.y += moveSpeed;
-  if(keys["ArrowLeft"]) player.x -= moveSpeed;
-  if(keys["ArrowRight"]) player.x += moveSpeed;
+  const search = document.getElementById("search").value.toLowerCase();
+  let logs = JSON.parse(localStorage.getItem("trainLogs") || "[]");
 
-  player.x = Math.max(0, Math.min(canvas.width, player.x));
-  player.y = Math.max(0, Math.min(canvas.height, player.y));
+  logs.forEach((log, index)=>{
+    const text = (log.line + log.number + log.place + log.memo).toLowerCase();
+    if(!text.includes(search)) return;
 
-  bullets.forEach(b=>{
-    b.x += b.dx;
-    b.y += b.dy;
-
-    let dist = Math.hypot(player.x-b.x, player.y-b.y);
-
-    // 被弾
-    if(dist < player.size + b.size){
-      life--;
-      bullets=[];
-      if(life<=0){
-        alert("ゲームオーバー\nScore: "+score);
-        location.reload();
-      }
-    }
-
-    // グレイズ
-    if(dist < 20 && dist > player.size + b.size){
-      score += 1;
-    }
-  });
-
-  document.getElementById("score").textContent=score;
-  document.getElementById("life").textContent=life;
-}
-
-function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  // 自機
-  ctx.fillStyle="white";
-  ctx.beginPath();
-  ctx.arc(player.x,player.y,player.drawSize,0,Math.PI*2);
-  ctx.fill();
-
-  // 当たり判定表示（低速時）
-  if(keys["Shift"]){
-    ctx.fillStyle="red";
-    ctx.beginPath();
-    ctx.arc(player.x,player.y,player.size,0,Math.PI*2);
-    ctx.fill();
-  }
-
-  // 弾
-  ctx.fillStyle="pink";
-  bullets.forEach(b=>{
-    ctx.beginPath();
-    ctx.arc(b.x,b.y,b.size,0,Math.PI*2);
-    ctx.fill();
+    const div = document.createElement("div");
+    div.className = "card";
+    div.innerHTML = `
+      <strong>${log.line}</strong> (${log.number})<br>
+      📍 ${log.place}<br>
+      📅 ${log.date}<br>
+      📝 ${log.memo}
+      ${log.photo ? `<img src="${log.photo}">` : ""}
+      <button class="delete" onclick="deleteLog(${index})">削除</button>
+    `;
+    list.appendChild(div);
   });
 }
 
-function loop(){
-  update();
-  draw();
-  requestAnimationFrame(loop);
+function deleteLog(index){
+  let logs = JSON.parse(localStorage.getItem("trainLogs") || "[]");
+  logs.splice(index,1);
+  localStorage.setItem("trainLogs", JSON.stringify(logs));
+  loadLogs();
 }
 
-setInterval(spawnCircle,1500);
-loop();
+function clearForm(){
+  line.value="";
+  number.value="";
+  place.value="";
+  date.value="";
+  memo.value="";
+  photo.value="";
+}
+
+loadLogs();
 </script>
 
 </body>
