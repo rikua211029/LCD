@@ -125,9 +125,9 @@ function loadLogs(){
     div.className = "card";
     div.innerHTML = `
       <strong>${log.line}</strong> (${log.number})<br>
-      📍 ${log.place}<br>
-      📅 ${log.date}<br>
-      📝 ${log.memo}
+      エンド ${log.place}<br>
+      メモ ${log.memo}
+      日付 ${log.date}<br>
       ${log.photo ? `<img src="${log.photo}">` : ""}
       <button class="delete" onclick="deleteLog(${index})">削除</button>
     `;
